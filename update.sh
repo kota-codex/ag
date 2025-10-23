@@ -2,7 +2,7 @@
 set -x
 while read -r url; do
     url=${url%$'\r'}
-    [ -z "$url" ] && continue
+    [[ -z "$url" || "$url" =~ ^# ]] && continue
     path=$(basename "$url" .git)
     if [ -d "$path/.git" ]; then
         echo "Fetching $path..."

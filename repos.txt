@@ -1,1 +1,11 @@
+# infra
+https://github.com/kota-codex/ag-modules-ci.git
+
+# language
+https://github.com/kota-codex/ag-ffi-header.git
+https://github.com/kota-codex/ag-runtime.git
+https://github.com/kota-codex/ag-compiler.git
+
+# libs
 https://github.com/kota-codex/sqliteFfi.git
+https://github.com/kota-codex/sdlFfi.git
