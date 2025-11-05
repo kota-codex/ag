@@ -26,3 +26,14 @@ for /f "usebackq delims=" %%u in ("repos.txt") do (
 )
 
 endlocal
+
+if "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
+    set VS_ARCH=x64
+) else if "%PROCESSOR_ARCHITECTURE%"=="ARM64" (
+    set VS_ARCH=arm64
+) else (
+    echo ERROR: Unsupported architecture "%PROCESSOR_ARCHITECTURE%"!
+    exit /b 1
+)
+call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat"-arch=%VS_ARCH%
+code ag.code-workspace
