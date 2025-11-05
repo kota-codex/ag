@@ -1,0 +1,42 @@
+{
+	"folders": [
+		{
+			"path": "ag-compiler"
+		},
+		{
+			"path": "ag-ffi-header"
+		},
+		{
+			"path": "ag-modules-ci"
+		},
+		{
+			"path": "ag-runtime"
+		},
+		{
+			"path": "build"
+		},
+		{
+			"path": "sdlFfi"
+		},
+		{
+			"path": "sqliteFfi"
+		}
+	],
+	"settings": {
+		"cmake.useCMakePresets": "always",
+		"files.associations": {
+			"*.ag": "rust",
+			"*.h": "c"
+		}
+	},
+	"launch": {
+		"configurations": [
+			{
+				"type": "cmake",
+				"request": "launch",
+				"name": "Debug portfile(s)",
+				"preLaunchTask": "Debug vcpkg commands"
+			}
+		]
+	}
+}
