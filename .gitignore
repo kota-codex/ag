@@ -4,5 +4,7 @@
 # Keep all files in repo root
 !/*.*
 
+/.*/
+
 # Keep a special directory
 #!/configs/
