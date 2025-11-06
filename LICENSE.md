@@ -26,23 +26,23 @@ The intent is not to penalize success, but to align contribution with capacity, 
 
 ## 1. Grant of License
 
-### **1.1 Non-Commercial Source License**
+### **1.1 Non-Commercial License**
 
 The Licensor grants any individual, nonprofit, academic institution, or for-profit entity a worldwide, royalty-free, non-exclusive, non-transferable license to:
 
 * Copy, view, and modify the Software in **source form only**;  
-* Distribute the Software **in source form only**, including modified versions, provided that this License and its Preamble remain intact and unaltered;  
-* Use the Software in source form strictly for **non-commercial purposes** (including research, education, personal experimentation, or evaluation).
+* Distribute the Software **in source form only**, including modified versions, provided that this License and its Preamble remain intact and unaltered;
+* Use the Software strictly for **non-commercial purposes** (including research, education, personal experimentation, or evaluation).
 
-### **1.2 Commercial Binary License**
+### **1.2 Commercial License**
 
-The Licensor grants any individual, nonprofit, academic institution, or for-profit entity a worldwide, royalty-free, non-exclusive, non-transferable license for **commercial use**, including internal production or redistribution of compiled application binaries, provided that such use:
+The Licensor grants any individual, nonprofit, academic institution, or for-profit entity a worldwide, royalty-free, non-exclusive, non-transferable license for **commercial use**, including internal production and distribution of compiled Argetnum applications, provided that such use:
 
 * Employs an official **binary distribution** of Argentum from Kota-Codex LLC; or  
 * Uses a compiler built from **unaltered official source code**; or  
 * Uses source code modified solely for platform or library integration that **does not affect** the **syntax or semantics** of the Argentum programming language as officially documented.
 
-The annual commercial license fee for use of the Argentum compiler is determined in **Section 6**.
+The annual commercial license fee for use of the Argentum compiler libraries or tools is determined in **Section 6**.
 
 ---
 
@@ -56,7 +56,7 @@ The Licensee may **not** create, distribute, or assist in creating any software 
 
 Documentation and educational materials may be created, copied, modified, and distributed for **any purpose, including commercial use**, provided that:
 
-* All copies clearly state that they are based on Argentum source;  
+* All materials clearly state that they are based on Argentum source and/or documentation;
 * A prominent notice of **“Patent Pending / Patent-Protected”** is included;  
 * The documentation does **not** provide instructions or enable the creation of a competing implementation of Argentum’s patented memory-management system.
 
@@ -83,7 +83,7 @@ If the project generates revenue or receives external funding, the Licensor inte
 
 The Licensee may **not**:
 
-* Use the Software or modified versions for commercial purposes unless licensed under **Section 6**;  
+* Use the Software or modified versions for commercial purposes unless licensed under **Section 1.2**;  
 * Circumvent or replicate Argentum’s patents or design concepts in derivative works;  
 * Use the Software to train machine-learning models intended to reproduce Argentum’s behavior.
 
