@@ -1,0 +1,152 @@
+using sdl { Window, Sdl, Texture, Rect, Font }
+using utils { Random, forRange }
+using gui { Actor, Group }
+using string;
+
+class Window {
+    safeLoad(fileName str) *Texture {
+        loadTexture(fileName) : {
+            sys_log("cant load img:{fileName}");
+            *Texture
+        }
+    }
+}
+class Scene{
+    +Group;
+
+    sdl = Sdl;
+    w = Window;
+    rnd = Random;
+    flare = *Texture;
+    star = *Texture;
+    background = *Texture;
+    foreground = *Texture;
+
+    init() this {
+        sdl.init(sdl_xInitEverything, sdl_xImgJpg | sdl_xImgPng ) &&
+        w.init(
+            "Hello from Argentum!",
+            Rect.xywh(sdl_xDefaultPos, sdl_xDefaultPos, 800s, 600s),
+            0s,
+            sdl_xRendererAccelerated);
+        background := w.safeLoad("back.jpg");
+        foreground := w.safeLoad("fore.png");
+        flare := w.safeLoad("round.png");
+        star := w.safeLoad("star.png");
+        push(10, Flare.initAtBottom(this));
+    }
+    onFrame() {
+        frameStartMs = sys_nowMs();
+        loop !(sdl.pollEvent() ? {
+            _[0] == sdl_xEventQuit ? sys_setMainObject(?sys_Object);
+        });
+        w.bltXYWH(background, 0s, 0s, 800s, 600s, 0s, 0s, 800s, 600s, 0xff_ff_ff_ffs);
+        paint(w);
+        w.bltXYWH(foreground, 0s, 0s, 800s, 600s, 0s, 0s, 800s, 600s, 0xff_ff_ff_ffs);
+        w.flip();
+        rnd.get(0, (size() / 2) + 1) == 0 ?
+            append(Flare.initAtBottom(this));
+        tick(1000/30);
+        sys_postTimer(frameStartMs + 1000/30, this.onFrame);
+    }
+}
+
+class Flare {
+    +Actor {
+        paint(dst Window) {
+            size = fade >> 8 >> 2;
+            dst.bltXYWH(sprite,
+                0s, 0s, 64s, 64s,
+                short(x >> 16 - size/2),
+                short(y >> 16 - size/2),
+                short(size),
+                short(size),
+                short(fade & 0xff00 << 16 | color));
+        }
+        tick(milliseconds int) bool {
+            x += dx;
+            y += dy;
+            dy += 1 << 13;
+            scene ? _.rnd.get(0, 2) == 0 ?
+                _.append(Sparkles.init(_, x >> 16, y >> 16, color));
+            fade += dFade;
+            dFade -= 140;
+            fade == 0 && scene && _.rnd.get(0, generation) == 0 ?
+                distributeInCircle(_.rnd, _.rnd.get(6, 15), 10 << 16) `dx `dy {
+                    _.append(Flare.initAtFlare(this, dx, dy));
+                };
+            y > -100 << 16 && y <= 600 << 16 && x > 0 && x < 800 << 16 && fade >= 0
+        }
+    }
+    initAtFlare(parent Flare, dx int, dy int) this {
+        scene := parent.scene;
+        scene? sprite := _.star; 
+        x := parent.x;
+        y := parent.y;
+        color := parent.color;
+        generation := parent.generation + 2;
+        this.dx := dx;
+        this.dy := dy;
+    }
+    initAtBottom(scene Scene) this {
+        this.scene := &scene;
+        r = scene.rnd;
+        x := r.get(200 << 16, (800-200) << 16);
+        dx := r.get(-x / 30, (800 << 16 - x) / 30);
+        dy := r.get(-18 << 16, -8 << 16);
+        sprite := scene.flare;
+        color := makeBrightColor(r);
+    }
+    scene = &Scene;
+    x = 0;
+    dx = 0;
+    fade = 0;
+    dFade = 4200;
+    y = 600 << 16;
+    dy = -10 << 16;
+    color = 0xff_ff_ff;
+    generation = 1;
+    sprite = *Texture;
+}
+
+class Sparkles {
+    +Actor {
+        paint(dst Window) {
+            scene? distributeInCircle(_.rnd, r, r) `x `y {
+                dst.fillRectXYWH(short(this.x + x), short(this.y + y), 1s, 1s, short(color));
+            }
+        }
+        tick(milliseconds int) bool { (r -= 1) > 0 }
+    }
+    init(scene Scene, x int, y int, color int) this {
+        this.scene := &scene;
+        this.x := x;
+        this.y := y;
+        this.color := color;
+    }
+    scene = &Scene;
+    x = 0;
+    y = 0;
+    r = 30;
+    color = 0;
+}
+
+fn makeBrightColor(rnd Random) int {
+    b = rnd.get(0, 0xff);
+    r = rnd.get(0, 0xff);
+    g = rnd.get(0xff - (b + r)/2, 0xff);
+    b << 16 + g << 8 + r
+}
+
+fn distributeInCircle(rnd Random, count int, r int, callback (int, int)) {
+    forRange(0, count) `i {
+        x = rnd.get(-r, r);
+        y = rnd.get(-r, r);
+        x*x + y*y < r*r ? callback(x, y);
+    };
+}
+
+f = *Font;
+s = Scene.init();
+sys_setMainObject(s);
+s.onFrame()

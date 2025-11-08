@@ -1,0 +1,14 @@
+using sys { Map }
+
+class Map {
+    each(onItem(*K,V)) {
+        i = 0;
+        c = capacity();
+        loop !(i < c ? {
+            keyAt(i) && `k
+            valAt(i) ? `v
+                onItem(k, v);
+            i += 1
+        })
+    }
+}

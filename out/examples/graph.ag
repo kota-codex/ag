@@ -1,0 +1,65 @@
+using sys { WeakArray, Array, log }
+using utils { existsInRange }
+using string;
+using array;
+const CR = utf32_(0x0a);
+
+class Node {
+    connections = WeakArray(Node);
+    isVisited = false;
+    isActive = false;
+    name = "";
+    
+    init(char short) this { name := sys_StrBuilder.putCh(char).toStr() }
+
+    hasLoop() bool {
+        log("checking node {name} ");
+        isActive ? ^hasLoop={log("found loop{CR}"); true };
+        isVisited ? ^hasLoop={log("already checked{CR}"); false };
+        isVisited := isActive := true;
+        log("checking {connections.size()} connections{CR}");
+        connections.contain(`n n.hasLoop()).{
+            isActive := false;
+            log("done with {name} connections{CR}")
+        }
+    }
+}
+
+class Graph {
+    nodes = Array(Node);
+    fromStr(s str) this {
+        log("Building grapgh from {s}{CR}");
+        in = s.cursor();
+        byNames = WeakArray(Node).resize(int('z') + 1);
+        getOrCreateNode = \{
+            name = in.getCh();
+            {
+                byNames[int(name)] : {
+                    r = nodes.append(Node.init(name));
+                    log("new ");
+                    byNames[int(name)] := &r;
+                    r
+                }
+            }.{ log("node {_.name}")}
+        };
+        loop {
+            from = getOrCreateNode();
+            in.getCh();
+            log(" <- ");
+            from.connections.append(&getOrCreateNode());
+            log("{CR}");
+            in.getCh() == 0s
+        };
+        log("{nodes.size()} nodes{CR}")
+    }    
+    hasLoop() bool {    
+        nodes.contain{
+            log("check starting with node {_.name}{CR}");
+            _.hasLoop()
+        }
+    }
+}
+
+log(Graph.fromStr("a>b b>c c>d e>f b>e e>a c>c").hasLoop()
+    ? "has some loop{CR}"
+    : "has no loops{CR}")

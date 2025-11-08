@@ -1,0 +1,729 @@
+using sys { String, Array, Cursor, StrBuilder, Map, powDbl }
+using string;
+using array;
+using map;
+
+class Parser {
+    +Cursor;
+    c = 0s;
+    errorText = ?"";
+    sb = StrBuilder;
+
+    init(text str) this {
+      set(text);
+      errorText := ?"";
+      c := getCh();
+      skipWs();
+    }
+
+    // Checks if parsing ended successfully.
+    success() bool { c == 0s && !errorText }
+
+    /// Attempts to extract a number from the current position.
+    /// If the current position contains a number:
+    /// - returns the extracted value
+    /// - and advances the position.
+    /// Otherwise:
+    /// - leaves the current position intact
+    /// - returns -double.
+    /// If it contains ill-formed number, the reader switches to error state.
+    tryNum() ?double {
+        c != '-' && c != '.' && (c < '0' || c > '9') ? ^tryNum = ?0.0;
+        getInt = \{
+            sign = isCh('-')
+                ? -1
+                : { isCh('+'); 1};
+            r = 0;
+            loop!(c >= '0' && c <= '9' ? {
+                r := r * 10 + int(c - '0');
+                c := getCh()
+            });
+            r * sign
+        };
+        r = double(getInt());
+        isCh('.') ? {
+            weight = r < 0.0 ? -0.1 : 0.1;
+            loop! (c >= '0' && c <= '9' ? {
+                r += weight * double(c - '0');
+                weight *= 0.1;
+                c := getCh()
+            })
+        };
+        isCh('e') || isCh('E') ?
+            r *= powDbl(10.0, double(getInt()));
+        skipWsAfterValue();
+        +r
+    }
+
+    /// Extracts a number from the current position.
+    /// On failure returns the `def`.
+    /// Always skips the current element.
+    getNum(def double) double { tryNum() : { skipValue(); def } }
+
+    /// Attempts to extract a boolean value from the current position.
+    /// If the current position contains `true` or `false`:
+    /// - returns the extracted value
+    /// - and advances the position.
+    /// Otherwise:
+    /// - leaves the current position intact
+    /// - returns nullopt.
+    tryBool() ?bool {
+        isStr("true") ? +true :
+        isStr("false") ? false
+    }
+
+    /// Extracts a boolean value from the current position.
+    /// On failure returns the `def`.
+    /// Always skips the current element.
+    getBool(def bool) bool {
+        isStr("true") ? true :
+        isStr("false") ? false :
+        { skipValue(); def }
+    }
+
+    /// Checks if the current position contains `null`.
+    /// If it does, skips it and returns true.
+    /// Otherwise returns false and leave the position intact, allowing to `try_*` or `get_*` other types.
+    tryNull() bool { isStr("null") }
+
+    /// Attempts to extract the string from the current position.
+    /// Expands the \uXXXX escapes to utf8 encoding. Handles surrogate pairs.
+    /// If current position contains a string:
+    /// - returns this string
+    /// - and skips it from the stream
+    /// Otherwise:
+    /// - leaves the current position intact
+    /// - returns nothing.
+    /// If the parsed string has errors: unterminated, bad escapes, bad utf16 surrogate pairs, `reader` switches to the error state.
+    tryStr() ?str { tryStrWithLimit(0) }
+
+    /// Attempts to extract the string from the current position.
+    /// Expands the \uXXXX escapes to utf8 encoding. Handles surrogate pairs.
+    /// If current position contains a string:
+    /// - returns this string
+    /// - and skips it from the stream
+    /// Otherwise:
+    /// - leaves the current position intact
+    /// - returns nothing.
+    /// The `maxSize` parameter defines the maxinum amount of runes to be extracted (the remainder gets skipped).
+    /// If the parsed string has errors: unterminated, bad escapes, bad utf16 surrogate pairs, `reader` switches to the error state.
+    tryStrWithLimit(maxSize int) ?str {
+        c != '"' ? ^tryStrWithLimit = ?"";
+        error = `msg {
+            setError(msg);
+            ^tryStrWithLimit = ?""
+        };
+        getHex = \{
+            c = getCh();
+            c == 0s ? error("incomplete \uXXXX sequence");
+            c >= '0' && c <= '9' ? c - '0' :
+            c >= 'a' && c <= 'f' ? c - 'a' + 10s :
+            c >= 'A' && c <= 'F' ? c - 'A' + 10s : error("not a hex digit")
+        };
+        getUtf16 = \{
+            v = getHex() << 12s;
+            v |= getHex() << 8s;
+            v |= getHex() << 4s;
+            v |= getHex();
+            v
+        };
+        loop getCh() -> {
+            _ == 0s ? error("incomplete string");
+            _ == '"' ? {
+                c := getCh();
+                skipWsAfterValue();
+                ^tryStrWithLimit = +sb.toStr()
+            };
+            _ == 0x5Cs ? getCh() -> { // '\' (encoded as hex to avoid syntax hilite artifacts in IDEs)
+                _ == 0s ? error("incomplete escape");
+                _ == 0x5Cs ? sb.putCh(0x5Cs) :
+                _ == '"' ? sb.putCh('"') :
+                _ == '/' ? sb.putCh('/') :
+                _ == 'b' ? sb.putCh(8s) :
+                _ == 'f' ? sb.putCh(0xCs) :
+                _ == 'n' ? sb.putCh(0xAs) :
+                _ == 'r' ? sb.putCh(0xDs) :
+                _ == 't' ? sb.putCh(9s) :
+                _ == 'u' ? sb.putCh({
+                    v = getUtf16();
+                    v >= 0xd800s && v <= 0xdbffs ? error("second surrogare without first one");
+                    v >= 0xdd00s && v <= 0xdfffs ? {
+                        getCh() != 0x5Cs || getCh() != 'u' ? error("first surrogate without following \u");
+                        second = getUtf16();
+                        second < 0xd800s || second > 0xdbffs ? error("first surrogare without second one");
+                        v & 0x3ffs << 10s + second & 0x3ffs + 0x10000s
+                    } : v
+                }) : error("invalid escape")
+            } : sb.putCh(_);
+            maxSize > 0 && (maxSize -= 1) == 0 ? {
+                skipString();
+                ^tryStrWithLimit = +sb.toStr()
+            };
+        }
+    }
+
+    /// Extracts the string from the current position.
+    /// Expands the \uXXXX escapes to utf8 encoding. Handles surrogate pairs.
+    /// If current position doesn't have a string, returns the `def`.
+    /// Always skips the current element.
+    /// The returned string is limited to the given `maxSize` utf8 runes (the remainder gets skipped).
+    /// If the parsed string has errors: unterminated, bad escapes, bad utf16 surrogate pairs, `reader` switches to the error state.
+    getStrWithLimit(def str, maxSize int) str { tryStrWithLimit(maxSize) : { skipValue(); def } }
+
+    /// Extracts the string from the current position.
+    /// Expands the \uXXXX escapes to utf8 encoding. Handles surrogate pairs.
+    /// If current position doesn't have a string, returns the `def`.
+    /// Always skips the current element.
+    /// If the parsed string has errors: unterminated, bad escapes, bad utf16 surrogate pairs, `reader` switches to the error state.
+    getStr(def str) str { tryStr() : { skipValue(); def } }
+
+    /// Checks if the current position contains an array.
+    /// Example:
+    ///    json = Parser.init("[1,2,3,4]");
+    ///    maybeArray = json.isArr() ?
+    ///       Blob.{ json.getArr\_.pushDouble(json.getNum(0)) }
+    isArr() bool { c == '[' }
+
+    /// Extracts an array from the current position.
+    /// If the current position contains an array it calls `onItem` for each array element.
+    /// Alway skips current json element.
+    /// The `onArray` handler must call any `Parser` methods to extract the array item data.
+    /// Example:
+    ///    json = Parser.init("[1,2,3,4]");
+    ///    result = Blob;
+    ///    json.getArr\result.pushDouble(json.getNum(0));
+    /// If array is malformed, then `reader` switches to the error state.
+    getArr(onItem()) {
+        isCh('[') : { skipValue(); ^getArr };
+        isCh(']') ? { skipWsAfterValue(); ^getArr };
+        loop {
+            onItem();
+            !isCh(',')
+        };
+        isCh(']')
+            ? skipWsAfterValue()
+            : setError("expected ',' or ']'");
+    }
+
+    /// Checks if the current position contains an object.
+    /// Example:
+    ///    class C { x = 0.0; y = "" }
+    ///    json = Parser("
+    ///        {
+    ///            "x": 1,
+    ///            "y": "hello"
+    ///        }
+    ///    ");
+    ///    maybeC = json.isObj() ? C.`c
+    ///       json.getObj {
+    ///          _=="x" ? c.x := json.getNum(0):
+    ///          _=="y" ? c.y := json.getStr("");
+    ///       };
+    isObj() bool { c == '{' }
+
+    /// Extracts an object from the current position.
+    /// If the current position contains an object, calls `onField` for each field.
+    /// Skips current json element.
+    /// The `onField` handler that:
+    /// - reseives the field name as a string,
+    /// - can use any any `Parser` method to access the field data.
+    /// Example:
+    ///    class C { x = 0.0; y = "" }
+    ///    json = Parser("
+    ///       { "x": 1, "y": "hello" }
+    ///    ");
+    ///    result = C;
+    ///    json.getObj {
+    ///        _=="x" ? result.x := json.getNum(0):
+    ///        _=="y" ? result.y := json.getStr("");
+    ///    };
+    /// If object is malformed, then `reader` switches to the error state.
+    getObj(onField(str)) {
+        isCh('{') : { skipValue(); ^getObj };
+        isCh('}') ? { skipWsAfterValue(); ^getObj };
+        loop{
+            f = tryStr() : ^getObj = setError("expected field name");
+            isCh(':') : ^getObj = setError("expected ':'");
+            c.{
+                onField(f)
+            } == c ? skipValue();
+            !isCh(',')
+        };
+        isCh('}')
+            ? skipWsAfterValue()
+            : setError("expected ',' or '}'");
+    }
+ 
+    /// Sets error state.
+    /// It can be called from any `onField` / `onItem` handlers, to terminate parsing.
+    /// In error state, `Parser` responds with nothing/false to all calls, quits all `get/try Object/Array` aggregated calls.
+    setError(text str) {
+        c := 0s;
+        errorText
+            || errorText := text
+    }
+
+    /// Returns error position in the parsed json.
+    getErrorPos() ?Cursor { errorText ? this }
+
+    /// Returns error text either set by `setError` manually or as a result of the internal parsing errors.
+    getErrorMessage() ?str { errorText }
+
+    // TODO: make private
+    skipWs() {
+        loop! (c > 0s && c <= ' ' ? c := getCh())
+    }
+    isCh(term short) bool {
+        c == term ? {
+            c := getCh();
+            skipWs()
+        }
+    }
+    isStr(term str) bool {
+        t = term.cursor();
+        c == t.getCh() ? {
+            loop t.getCh() -> {
+                (_ == 0s      ? { c := getCh(); skipWsAfterValue() }) ||
+                (_ != getCh() ? setError("expected {term}"))
+            }
+        }
+    }
+
+    skipWsAfterValue() {
+        skipWs();
+        c != ',' && c != ':' && c != '}' && c != ']' && c != 0s ?
+            setError("unexpected characters at the end of value");
+    }
+
+    skipString() {
+        c := getCh(); 
+        loop {
+            c == 0s ? {
+                setError("incomplete string while skipping");
+                ^skipString
+            };
+            c == 0x5Cs ? { // '\'
+                getCh() == 0s ? {
+                    setError("incomplete string escape while skipping");
+                    ^skipString
+                }
+            } : c == '"' ? {
+                c := getCh();
+                skipWs();
+                ^skipString
+            };
+            c := getCh();
+        }
+    }
+
+    skipValue() {
+        c == 0s ? {} :
+        c == '{' ? skipUntil('}') :
+        c == '[' ? skipUntil(']') :
+        c == '"' ? skipString() : {
+            loop! (
+                c != ',' && c != '}' && c != ']' && c != 0s
+                    ? c := getCh()
+            )
+        }
+    }
+
+    skipUntil(term short) {
+        expects = StrBuilder;
+        expects.putCh(term);
+        c := getCh();
+        loop {
+            c == 0s ? {
+                setError(term == '}' ? "incomplete object" : "incomplete array");
+                ^skipUntil
+            };
+            c == '"' ? skipString() : {
+                c == '[' ? { expects.putCh(']'); } :
+                c == '{' ? { expects.putCh('}'); } :
+                c == ']' ||  c == '}' ? {
+                    expects.get8At(expects.pos -= 1) != c ? {
+                        setError(StrBuilder.putStr("mismatched ").putCh(c).toStr());
+                        ^skipUntil
+                    };
+                    expects.pos == 0 ? {
+                        c := getCh();
+                        skipWs();
+                        ^skipUntil
+                    };
+                } : {};
+                c := getCh();
+            };
+        }
+    }
+}
+
+class Writer {
+    +StrBuilder;
+    inArr = false;
+    written = false;
+    indentVal = 0;
+    indentChar = 0s;
+    indentStep = 0;
+    cursor = Cursor;
+
+    /// Make pretty printed JSON with space-indentation
+    /// Should be called before any data writing calls.
+    useSpaces(indentStep int) this {
+        indentChar := ' ';
+        this.indentStep := indentStep
+    }
+
+    /// Make pretty printed JSON with tab-indentation
+    /// Should be called before any data writing calls.
+    useTabs() this {
+        indentChar := 9s;
+        indentStep := 1
+    }
+
+    /// Writes boolean node.
+    /// Can be called:
+    /// - one time after Writer creation to write root element
+    /// - multiple times inside `arr` lambda to write array items
+    /// - one time after call to field lambda to write field value.
+    bool(v bool) this {
+        handleDup() ? putStr(v ? "true" : "false")
+    }
+
+    /// Writes string node.
+    /// It encodes strings in utf8. It makes escapes required by JSON standard. 
+    /// `str` can be called:
+    /// - one time after Writer creation to write root element
+    /// - multiple times inside `arr` lambda to write array items
+    /// - one time after call to field lambda to write field value.
+    str(v str) this {
+        handleDup() ? {
+            putHex = `n putCh(n > 9s ? n - 10s + 'a' : n + '0');
+            putCh('"');
+            cursor.set(v) -> loop _.getCh()-> {
+                _ >= ' ' ? {
+                    _ == '"' || _ == '/' || _ == 0x5Cs ? putCh(0x5Cs);
+                    putCh(_)
+                } :
+                _ == 8s ? putCh('/').putCh('b') :
+                _ == 0xCs ? putCh('/').putCh('f') :
+                _ == 0xAs ? putCh('/').putCh('n') :
+                _ == 0xDs ? putCh('/').putCh('r') :
+                _ == 0x9s ? putCh('/').putCh('t') :
+                _ != 0s ? {
+                    putCh(0x5Cs).putCh('x').putCh('0').putCh('0');
+                    putHex(_ >> 4s);
+                    putHex(_ & 0xffs)
+                } : {
+                    putCh('"');
+                    ^str
+                }
+            }
+        }
+    }
+
+    /// Writes numeric node.
+    /// It preserves exact integer value for up to 52 bits (by JSON standard).
+    /// Use string type for 64-bit integers.
+    /// `num` `an be called:
+    /// - one time after Writer creation to write root element
+    /// - multiple times inside `arr` lambda to write array items
+    /// - one time after call to field lambda to write field value.
+    num(v double) this { handleDup() ? putDouble(v) }
+
+    /// Writes null node.
+    /// Can be called:
+    /// - one time after Writer creation to write root element
+    /// - multiple times inside `arr` lambda to write array items
+    /// - one time after call to field lambda to write field value.
+    null() this { handleDup() ? putStr("null") }
+
+    /// Writes array node.
+    /// It takes an itemWriter lambda in which you can call any writer methods
+    /// to produce array items. Example:
+    /// log(Writer.arr {
+    ///     _.num(1.0);
+    ///     _.num(2.0);
+    /// }.toStr());
+    /// It writes: [1,2]
+    /// `arr` can be called:
+    /// - one time after Writer creation to write root element
+    /// - multiple times inside `arr` lambda to write array items
+    /// - one time after call to field lambda to write field value.
+    arr(itemWriter(Writer)) this {
+        handleDup() ? {
+            savedInArr = inArr;
+            inArr := true;
+            written := false;
+            putCh('[');
+            indentVal += indentStep;
+            itemWriter(this);
+            indentVal -= indentStep;
+            written ? indent();
+            putCh(']');
+            written := true;
+            inArr := savedInArr;
+        }
+    }
+
+    /// Writes object node.
+    /// It takes an objWriter lambda in which you should write all fields.
+    /// This objWriter lambda is called with a fieldWriter lambda.
+    /// Wo write a field you call this fieldWriter with a field name
+    /// and in return you receive a Writer instance to write field data.
+    /// Example:
+    /// log(Writer.obj {
+    ///   _("field a").num(42.0);
+    ///   _("field b").bool(true);
+    /// }.toStr());
+    /// This prints: {"field a":42,"field b":true}
+    /// `obj` can be called:
+    /// - one time after Writer creation to write root element
+    /// - multiple times inside `arr` lambda to write array items
+    /// - one time after call to field lambda to write field value.
+    obj(objWriter((str)Writer)) this {
+        handleDup() ? {
+            putCh('{');
+            indentVal += indentStep;
+            savedInArr = inArr;
+            inArr := false;
+            firstField = true;
+            written := true;
+            objWriter {
+                !written ? putStr("null");
+                firstField
+                    ? firstField := false
+                    : putCh(',');
+                indent();
+                written:=false;
+                this.str(_);
+                written:=false;
+                putCh(':');
+                indentChar != 0s ? putCh(' ');
+                this
+            };
+            written : putStr("null").indent();
+            indentVal -= indentStep;
+            firstField : indent();
+            putCh('}');
+            inArr := savedInArr;
+            written := true;
+        }
+    }
+    //private
+    handleDup() bool {
+        !written ? {
+            inArr ? indent();
+            written:= true
+        } : {
+            inArr ? putCh(',').indent()
+        }
+    }
+    indent() {
+        indentChar != 0s ? {
+            putCh(10s);
+            (indentVal+1) -> loop! ((_-=1) > 0 ? putCh(indentChar));
+        }
+    }
+}
+
+/// DOM
+interface Node{ write(w Writer) Writer; }
+class JNum{
+    +Node{
+        write(w Writer) Writer { w.num(n) }
+    }
+    n = 0.0;
+}
+fn jnum(n double) @JNum { JNum.{_.n := n} }
+class JBool{
+    +Node{
+        write(w Writer) Writer { w.bool(b) }
+    }
+    b = false;
+}
+fn jbool(b bool) @JBool { JBool.{_.b := b} }
+class JStr{
+    +Node{
+        write(w Writer) Writer { w.str(s) }
+    }
+    s = "";
+}
+fn jstr(s str) @JStr { JStr.{_.s := s} }
+class JNull{
+    +Node{
+        write(w Writer) Writer { w.null() }
+    }
+}
+fn jnull() @JNull { JNull }
+class JArr{
+    +Node{
+        write(w Writer) Writer { w.arr{ each\_.write(w) } }
+    }
+    +Array(Node);
+}
+fn jarr(maker(JArr)) @JArr { JArr.{ maker(_) } }
+class JObj{
+    +Node{
+        write(w Writer) Writer { w.obj{ each`k`v v.write(_(k)) } }
+    }
+    +Map(String, Node);
+}
+fn jobj(maker(JObj)) @JObj { JObj.{ maker(_) } }
+
+fn read(p Parser) @Node {
+    p.isArr() ? ^read=jarr\p.getArr\_.append(read(p)) ~ Node;
+    p.isObj() ? ^read=jobj\p.getObj`f _[f] := read(p) ~ Node;
+    p.tryBool() ? ^read=jbool(_) ~ Node;
+    p.tryNum() ? ^read=jnum(_) ~ Node;
+    p.tryStr() ? ^read=jstr(_) ~ Node;
+    p.tryNull();
+    jnull() ~ Node
+}
+
+// text = "
+//     [
+//         {"name": "Andrey", "height": 6.5},
+//         {"name": "Katy", "height": 5.8}
+//     ]
+// ";
+// root = read(Parser.init(text));
+// root~JArr ? _.each { _~JObj ? `i{
+//     i["name"] ? _~JStr ? `name
+//     i["height"] ? _~JNum ? `height
+//     sys_log("{name.s}-{height.n} ")
+// }};
+
+// text = "
+//     {
+//         "x": 1,
+//         "z": {"a":"sss"},
+//         "y": "asdf"
+//     }
+// ";
+// root = read(Parser.init(text));
+// root~JObj ? `r
+// r["x"] ? _~JNum ? `xn
+// r["z"] ? _~JObj ? _["v"] := jnum(3.14 + xn.n);
+
+// sys_log(root.write(Writer).toStr());
+// sys_log(root.write(Writer.useSpaces(2)).toStr());
+
+// sys_log(Writer.bool(true).toStr());
+// sys_log(Writer.num(42.3).toStr());
+// sys_log(Writer.null().toStr());
+
+// sys_log(Writer.str("ttrn\
+//     "asdf"
+//     \zxcv/
+// ").toStr());
+
+// sys_log(Writer.arr{_
+//     .num(1.1)
+//     .num(1.2)
+//     .num(1.3)
+// }.toStr());
+
+// sys_log(Writer.useTabs().arr{
+//     _.num(1.1);
+//     _.arr{
+//         _.bool(true);
+//         _.str("Andrey");
+//     };
+//     _.num(1.2);
+// }.toStr());
+
+// sys_log(Writer.useSpaces(2).obj {
+//     _("year").num(1972.0);
+//     _("name").str("Andrey");
+//     _("details").obj {         // nested object
+//         _("awake").bool(true);
+//         _("excels at").arr{_}; // empty array
+//     };
+//     _("address").null();
+// }.toStr());
+
+// Parser.init("-123.12").getNum(0.0)->sys_log("{_}");
+
+// Parser.init("
+//     "test"
+// ").getStr("")->sys_log(_);
+
+// Parser.init("[1,2,3,4]")->_.getArr\sys_log(" {_.getNum(0.0)} ");
+
+// Parser.init("
+//     {
+//         "x": 1,
+//         "z": {"a":"sss"},
+//         "y": "asdf"
+//     }
+// ")->_.getObj`f {
+//     f=="x" ? sys_log("x->{_.getNum(0.0)}") :
+//     f=="y" ? sys_log("y->{_.getStr("")}");
+// };
+
+// Parser.init("[false, true, true, false]")->
+//    _.getArr\_.getBool(true)->sys_log("{_ ? "+" : "-"}")
+
+// class Point{
+//     x = 0.0f;
+//     y = 0.0f;
+// } 
+// class Polygon {
+//     name = "";
+//     points = Array(Point);
+//     isActive = false;
+// }
+
+// fn polygonsToJson(data Array(Polygon)) str {
+//     Writer.useSpaces(4).arr{
+//         data.each `poly _.obj{
+//             _("name").str(poly.name);
+//             _("active").bool(poly.isActive);
+//             _("points").arr\poly.points.each `p _.obj{
+//                 _("x").num(double(p.x));
+//                 _("y").num(double(p.y))
+//             }
+//         }
+//     }.toStr()
+// }
+
+// // sys_log(polygonsToJson(myPolygonArray));
+
+// fn parseJson(data str) Array(Polygon) {
+//     Array(Polygon).{                                              // 1
+//         json = Parser.init(data);
+//         json.getArr\_.append(Polygon)-> json.getObj `f {           // 2
+//             f=="active" ? _.isActive := json.getBool(false) :
+//             f=="name"   ? _.name := json.getStr("") :
+//             f=="points" ? json.getArr\_.points.append(Point)-> json.getObj `f { // 3
+//                 f=="x" ? _.x := float(json.getNum(0.0)) :
+//                 f=="y" ? _.y := float(json.getNum(0.0))
+//             }
+//         };
+//         json.success() : sys_log("error {json.getErrorMessage()}");
+//     }
+//  }
+//  p = parseJson("
+//     [
+//         {
+//             "active": false,
+//             "name": "p1",
+//             "points": [
+//                 {"x": 11, "y": 32},
+//                 {"y": 23, "x": 12},
+//                 {"x": -1, "y": 4}
+//             ]
+//         },
+//         {
+//             "points": [
+//                 {"x": 10, "y": 0},
+//                 {"x": 0, "y": 10},
+//                 {"y": 0, "x": 0}
+//             ],
+//             "active": true,
+//             "name": "Corner"
+//         }
+//     ]
+// ");
+
+// polygonsToJson(p) -> sys_log(_);

@@ -1,0 +1,27 @@
+using sys { Object, Array, Thread, log, setMainObject }
+using utils { forRange }
+using array;
+using string;
+const CR = utf32_(10);
+
+class App{                              // This is a mutable application state
+    threads = Array(Thread(Object));    // It contains some threads
+    activeCount = 0;                    // and a counter of operations that run on threads.
+}
+
+app = App;           // Create app instance
+setMainObject(app);  // and register it as such.
+
+app.threads.push(20) {                                       // push 20 threads in app.threads array
+    log("Launch thread {app.threads.size()}{CR}");
+    Thread(Object).start(Object).{                           // create thread, launch it, but before putting into threads array...
+        _.root()~~myTask(tNum = app.activeCount += 1, &app){ // post to its root object a myTask...
+            forRange(0, 100) \                               // that prings numbers...
+                log("Thread {tNum} iteration {_}{CR}");
+            app~~finishThread{                               // and then post to main app a finishThread task ...
+                log("{activeCount -= 1} threads left{CR}");  // that counts down and...
+                activeCount == 0 ? setMainObject(?Object);   // maybe terminate application.
+            }
+        }
+    }
+}

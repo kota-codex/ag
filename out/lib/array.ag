@@ -1,0 +1,98 @@
+using sys { Object, Array, WeakArray, SharedArray }
+using utils { existsInRange, forRange }
+
+class Array {
+    itemsCount = 0;
+
+    -size() int { itemsCount }
+
+    findFirst(predicate(T)bool) ?int {
+        forRange(0, size()) `i {
+            this[i] && predicate(_) ? ^findFirst = +i;
+        };
+        ?0
+    }
+    each(handler (T)) {
+        i = 0;
+        loop!{
+            i < itemsCount ? {
+                this[i] ? handler(_);
+                i += 1
+            }
+        }
+    }
+    contain(predicate (T)bool) bool { !!findFirst(predicate) }
+    plow(filter (T)bool) {
+        i = 0;
+        loop!{
+            i < itemsCount ? {
+                this[i] && filter(_)
+                    ? { i += 1; }
+                    : deleteAt(i);
+            }
+        }
+    }
+    deleteAt(i int) {
+        setOptAt(i, ?T);
+        move(i, i + 1, itemsCount);
+        itemsCount -= 1;
+    }
+    allocate(count int) {
+        itemsCount + count >= capacity()
+            ? insert(itemsCount, (itemsCount + 20) / 4 + count);
+    }
+    push(n int, generator ()@T) {
+        allocate(n);
+        loop{
+            this[itemsCount] := generator();
+            itemsCount += 1;
+            (n -= 1) == 0
+        }
+    }
+    append(provider ()@T) T {
+        allocate(1);
+        itemsCount += 1;
+        this[itemsCount - 1] := provider()
+    }
+}
+
+class WeakArray {
+    -size() int { capacity() }
+    resize(n int) this { insert(0, n) }
+    append(item &T) {
+        n = capacity();
+        insert(n, 1);
+        this[n] := item;
+    }
+    -contain(predicate (T)bool) bool {
+        existsInRange(0, capacity()) {
+            this[_] && predicate(_)
+        }
+    }
+}
+
+class SharedArray {
+    -size() int { capacity() }
+    resize(n int) this { insert(0, n) }
+    append(item *T) {
+        n = capacity();
+        insert(n, 1);
+        this[n] := item
+    }
+    -contain(predicate (*T)bool) bool {
+        existsInRange(0, capacity()) {
+            this[_] && predicate(_)
+        }
+    }
+    findFirst(predicate(*T)bool) ?int {
+        forRange(0, size()) `i {
+            this[i] && predicate(_) ? ^findFirst = +i
+        };
+        ?0
+    }
+    each(action(*T)) {
+        forRange(0, size()) {
+            this[_] ? action(_)
+        }
+    }
+}

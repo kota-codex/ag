@@ -1,0 +1,57 @@
+using sys { Array, log }
+using array;
+
+class Style {
+    font = "";
+    size = 0.0;
+    weight = 0;
+}
+class Bitmap { src = ""; }
+class CardItem{}
+class Document {
+    cards = Array(Card);
+}
+class Card {
+    items = Array(CardItem);
+}
+class TextItem { +CardItem;
+    text = "";
+    style = *Style;
+}
+class ImageItem { +CardItem;
+    +CardItem;
+    bitmap = *Bitmap;
+}
+class ButtonItem { +CardItem;
+    caption = "";
+    targetCard = &Card;
+}
+class ConnectorItem { +CardItem;
+    from = &CardItem;
+    to = &CardItem;
+}
+class GroupItem { +CardItem;
+    items = Array(CardItem);
+}
+
+Document.{
+    normal = *Style.{
+        _.font := "Times";
+        _.size := 16.5;
+        _.weight := 600;
+    };
+    _.cards.append(Card.`c{
+        helloText = c.items.append(TextItem.{
+            _.text := "Hello";
+            _.style := normal;
+        });
+        buttonOk = c.items.append(ButtonItem.{
+            _.caption := "Click me";
+            _.targetCard := &c;
+        });
+        c.items.append(ConnectorItem.{
+            _.from := &helloText;
+            _.to := &buttonOk;
+        });
+    });
+};
