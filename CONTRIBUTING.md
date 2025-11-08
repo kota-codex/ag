@@ -4,22 +4,16 @@
 **Licensor:** Kota Codex LLC (“Licensor”)  
 **Software:** Argentum Programming Language (compiler, libraries, and tools)
 
----
-
 ## **1\. Purpose**
 
 These rules define how external contributors may participate in the Argentum project and how contributions may qualify for recognition, rewards, or bounty payments.  
 All contributions are governed by the **Argentum Software License** and this **Contribution Policy**, which together form the full agreement between the Contributor and the Licensor.
-
----
 
 ## **2\. Eligibility**
 
 2.1 Any individual or entity may contribute code, documentation, design assets, or research related to the Argentum project.  
 2.2 Contributors must be at least 18 years of age or have legal capacity to enter into binding agreements.  
 2.3 Contributions may be made voluntarily or under a formal bounty announcement by the Licensor.
-
----
 
 ## **3\. Contribution Rules**
 
@@ -38,8 +32,6 @@ Unless explicitly covered by a bounty or prior written agreement, all contributi
 
 3.4 **Contributor Recognition**  
 Accepted contributions may include attribution (name, handle, or organization) in public project materials, documentation, or release notes, unless anonymity is requested.
-
----
 
 ## **4\. Bounty and Reward Program**
 
@@ -78,8 +70,6 @@ Bounties are funded from revenue, licensing fees, sponsorships, or donations all
 Decisions regarding bounty eligibility and payout are final and not subject to appeal.  
 However, the Licensor may review disputes in good faith at its discretion.
 
----
-
 ## **5\. Contributor Conduct**
 
 All participants are expected to:
@@ -90,15 +80,11 @@ All participants are expected to:
 
 Violation of these rules may result in temporary or permanent suspension from participation or bounty eligibility.
 
----
-
 ## **6\. Amendment and Termination**
 
 The Licensor may update or terminate this Policy or the Bounty Program at any time.  
 Updates will take effect upon publication on the official Argentum website or repository.  
 Existing bounties will be honored under the terms active at their announcement.
-
----
 
 ## **7\. Legal Status**
 
