@@ -80,7 +80,6 @@ The Licensee may **not**:
 
 * Use the Software or modified versions for commercial purposes unless licensed under **Section 1.2**;  
 * Circumvent or replicate Argentum’s patents or design concepts in derivative works;  
-* Use the Software to train machine-learning models intended to reproduce Argentum’s behavior.
 
 **Note:** Redistribution, SaaS hosting, or rental of the Software is permitted **only when fully compliant with this License**.
 
