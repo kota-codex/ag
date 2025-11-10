@@ -1,57 +1,24 @@
-using sys { Array, log }
-using array;
+using utils {forRange}
+using string;
 
-class Style {
-    font = "";
-    size = 0.0;
-    weight = 0;
-}
-class Bitmap { src = ""; }
-class CardItem{}
-class Document {
-    cards = Array(Card);
-}
-class Card {
-    items = Array(CardItem);
-}
-class TextItem { +CardItem;
-    text = "";
-    style = *Style;
-}
-class ImageItem { +CardItem;
-    +CardItem;
-    bitmap = *Bitmap;
-}
-class ButtonItem { +CardItem;
-    caption = "";
-    targetCard = &Card;
-}
-class ConnectorItem { +CardItem;
-    from = &CardItem;
-    to = &CardItem;
-}
-class GroupItem { +CardItem;
-    items = Array(CardItem);
-}
-
-Document.{
-    normal = *Style.{
-        _.font := "Times";
-        _.size := 16.5;
-        _.weight := 600;
-    };
-    _.cards.append(Card.`c{
-        helloText = c.items.append(TextItem.{
-            _.text := "Hello";
-            _.style := normal;
-        });
-        buttonOk = c.items.append(ButtonItem.{
-            _.caption := "Click me";
-            _.targetCard := &c;
-        });
-        c.items.append(ConnectorItem.{
-            _.from := &helloText;
-            _.to := &buttonOk;
-        });
-    });
+//
+// Bottles is a lambda function with two parameters:
+// - count of type int,
+// - n of type string.
+// It returns string.
+//
+bottles = `count `n {
+    count == 0
+        ? "{n}o more bottles"
+        : "{count} bottle{count != 1 ? "s"}"   // This half-condition adds 's' to 'bottle' if count!=1
 };
+
+forRange(-99, 1) `count
+    sys_log("{}\
+        { bottles(-count, "N") } of beer on the wall, { bottles(-count, "n") } of beer.
+        { count == 0
+            ? "Go to the store and buy some more"
+            : "Take one down and pass it around"
+        }, { bottles((-count-1+100) % 100, "n") } of beer on the wall.
+    ");
+// The loop body above has a multiline string with nested interpolations
