@@ -6,7 +6,7 @@
     set linker="link.exe"
 )
 
-"%~dp0agc" -src "%~dp1." -src "%~dp0..\lib" -start "%~n1" -O3 -o "%~n1" -L lnk.txt -D dep.txt
+"%~dp0agc" -src "%~dp1." -src "%~dp0..\lib::https://aglang.org/wp-json/repo/v1" -start "%~n1" -O3 -o "%~n1" -L lnk.txt -D dep.txt
 @if errorlevel 1 exit /b %errorlevel%
 
 @set /p objs=<lnk.txt
