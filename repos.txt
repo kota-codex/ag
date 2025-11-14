@@ -1,5 +1,6 @@
 # infra
 https://github.com/kota-codex/ag-modules-ci.git
+https://github.com/kota-codex/ag-repo-wp-plugin.git
 
 # language
 https://github.com/kota-codex/ag-ffi-header.git
