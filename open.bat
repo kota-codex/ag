@@ -35,5 +35,5 @@ if "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
     echo ERROR: Unsupported architecture "%PROCESSOR_ARCHITECTURE%"!
     exit /b 1
 )
-call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat"-arch=%VS_ARCH%
+call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=%VS_ARCH%
 code ag.code-workspace
