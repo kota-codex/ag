@@ -16,7 +16,12 @@ OUT_NAME="${OUT_NAME%.*}"  # remove ext
     -L lnk.txt \
     -D dep.txt
 objs=$(<lnk.txt)
-gcc -no-pie -o "$OUT_NAME" $objs -g -lm
+
+if [ "$(uname -s)" = "Darwin" ]; then
+    clang -o "$OUT_NAME" $objs -g -Wl,-no_pie
+else
+    gcc -o "$OUT_NAME" $objs -g -lm -no-pie
+fi
 
 deps=$(<dep.txt)
 for f in $deps; do
