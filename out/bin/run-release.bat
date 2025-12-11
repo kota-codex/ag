@@ -1,5 +1,3 @@
-@setlocal enabledelayedexpansion
-
 @if exist "%~dp0lld-link.exe" (
     set linker="%~dp0lld-link.exe"
 ) else (
