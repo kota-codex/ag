@@ -6,15 +6,21 @@ SRC_DIR="$(dirname "$1")"
 OUT_NAME="$(basename "$1")"
 OUT_NAME="${OUT_NAME%.*}"  # remove ext
 
-"$AG_DIR/agc" -O3 -src "$SRC_DIR" \
+if [ "$(uname -s)" = "Darwin" ]; then
+    pie_mode="-pie"
+    linker="clang"
+    linker_flags="-Wl"
+else
+    pie_mode=""
+    linker="gcc"
+    linker_flags="-lm -no-pie"
+fi
+
+"$AG_DIR/agc" -O3 $pie_mode -src "$SRC_DIR" \
     -src "$AG_DIR/../lib::https://aglang.org/wp-json/repo/v1" \
     -start "$OUT_NAME" -o "$OUT_NAME" -L lnk.txt -D dep.txt
 objs=$(<lnk.txt)
-if [ "$(uname -s)" = "Darwin" ]; then
-    clang -o "$OUT_NAME" $objs -Wl,-no_pie
-else
-    gcc -o "$OUT_NAME" $objs -lm -no-pie
-fi
+$linker -o "$OUT_NAME" $objs $linker_flags
 
 deps=$(<dep.txt)
 for f in $deps; do
