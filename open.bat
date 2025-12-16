@@ -36,4 +36,4 @@ if "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
     exit /b 1
 )
 call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=%VS_ARCH%
-code ag.code-workspace
+start code ag.code-workspace
