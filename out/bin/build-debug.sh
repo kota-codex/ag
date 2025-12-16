@@ -30,5 +30,5 @@ $linker -g -o "$OUT_NAME" $objs $linker_flags
 
 deps=$(<dep.txt)
 for f in $deps; do
-    cp -u "$f" .
+    rsync -u "$f" .
 done
